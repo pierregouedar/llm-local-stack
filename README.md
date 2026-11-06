@@ -52,8 +52,12 @@ All numbers, flags and `--n-cpu-moe` values in this repository come from **one m
 | OS | Windows 11, desktop on 2 monitors (~1.2 GB of VRAM used by the desktop) |
 | Software | llama.cpp b12128, CUDA 12.4 build (the CUDA 13 build was measured too, no difference), llama-swap v270 |
 | Clients | macOS with omp and OpenCode, over Tailscale; waker on a Linux NAS with Docker |
+| **Reference model** | **[Cyber-Tiel Coder 35B-A3B](https://huggingface.co/peculiar-ragdoll/Cyber-Tiel-Coder-35B-A3B-GGUF-MTP), `UD-Q4_K_S`** (file `Cyber-Tiel-Coder-35B-A3B-MTP-UD-Q4_K_S.gguf`): MoE, 35B total / ~3B active parameters, with an MTP head, abliterated variant of Tiel-Coder (Ornith 1.5 base) |
+| Second model | Qwen3.6-35B-A3B heretic, `Q4_K_S` (`Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-Q4_K_S.gguf`), general use |
 
-Other GPUs, VRAM sizes and the Linux server scripts have **not** been tested: expect to re-tune `--n-cpu-moe` ([docs/TUNING.md](docs/TUNING.md)), and please open an issue with your numbers if you run it elsewhere.
+Unless a table says otherwise, every benchmark figure is for the reference model. The other models in [docs/BENCHMARKS.md](docs/BENCHMARKS.md#2-model-choice) (dense 27B, 8B, IQ4 quants...) were only measured to choose it.
+
+Other models, GPUs, VRAM sizes and the Linux server scripts have **not** been tested: expect to re-tune `--n-cpu-moe` ([docs/TUNING.md](docs/TUNING.md)), and please open an issue with your numbers if you run it elsewhere.
 
 ## Results on the reference machine
 
