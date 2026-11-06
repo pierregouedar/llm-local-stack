@@ -1,0 +1,89 @@
+# llama-swap config template. Do NOT edit llama-swap.yaml (generated): edit this file.
+# The start script fills in the LLAMA_SERVER and MODELS_DIR placeholders (server/config.json)
+# and API_KEY (server/secrets/), each written between double curly braces below.
+#
+# One OpenAI-compatible endpoint for every model: the requested model ("model" in the request)
+# is loaded on demand and the previous one is unloaded (only one fits in 10 GB of VRAM).
+#
+# Values measured on RTX 3080 10 GB + Ryzen 7 3800X + 32 GB DDR4 (see docs/BENCHMARKS.md).
+# -ncmoe values depend on your VRAM: see docs/TUNING.md to adjust them.
+
+healthCheckTimeout: 300
+
+# API key required on every request (Authorization: Bearer ...).
+apiKeys:
+  - "{{API_KEY}}"
+
+macros:
+  # -ngl 99 + -ncmoe N : everything on the GPU except the experts of N layers (on CPU)
+  # -b/-ub 4096        : large batches, +41 % prompt processing when experts are on CPU
+  # --load-mode none   : no mmap, +36 % prompt processing (x2.3 at 8k)
+  # -t 6               : generation is RAM-bound; 6 threads > 8 > 16 (Zen 2, 8 cores)
+  # -ctk/-ctv q8_0     : same speed as f16, less VRAM
+  llama: >-
+    {{LLAMA_SERVER}}
+    --host 127.0.0.1 --port ${PORT}
+    --fit off -ngl 99 -t 6 -fa on -b 4096 -ub 4096 --load-mode none
+    -ctk q8_0 -ctv q8_0 --jinja
+
+models:
+  # Fastest prompt processing (~2950 tok/s at 32k), generation ~47 tok/s, 64k per conversation.
+  # -np 2: the main session and the agent's side requests (titles, sub-agents) don't evict
+  # each other's cache. --checkpoint-min-step: resume checkpoints (hybrid model).
+  cybertiel:
+    name: "Cyber-Tiel Coder 35B-A3B (code, fast prompt processing)"
+    cmd: >-
+      ${llama}
+      -m {{MODELS_DIR}}/Cyber-Tiel-Coder-35B-A3B-MTP-UD-Q4_K_S.gguf
+      -ncmoe 32 -c 131072 -np 2
+      --checkpoint-min-step 2048
+      --temp 0.6 --top-p 0.95 --top-k 20 --min-p 0
+      --reasoning-budget 4000
+      --reasoning-budget-message "Stop thinking now and act."
+    env: ["CUDA_MODULE_LOADING=EAGER"]   # avoids "CUDA error: shared object initialization failed" at startup
+    ttl: 0
+
+  # Fastest generation (~50 tok/s) thanks to MTP (2 drafted tokens), prompt processing ~2380 tok/s.
+  # 4 more expert layers on CPU and a smaller MTP cache/batch to fit in VRAM.
+  cybertiel-mtp:
+    name: "Cyber-Tiel Coder 35B-A3B (code, fast generation MTP)"
+    cmd: >-
+      ${llama}
+      -m {{MODELS_DIR}}/Cyber-Tiel-Coder-35B-A3B-MTP-UD-Q4_K_S.gguf
+      -ncmoe 36 -c 131072 -np 2
+      --checkpoint-min-step 2048
+      --spec-type draft-mtp --spec-draft-n-max 2
+      -ctkd q8_0 -ctvd q8_0 --spec-draft-n-ubatch 512
+      --temp 0.6 --top-p 0.95 --top-k 20 --min-p 0
+      --reasoning-budget 4000
+      --reasoning-budget-message "Stop thinking now and act."
+    env: ["CUDA_MODULE_LOADING=EAGER"]
+    ttl: 0
+
+  # Long sessions: 262k shared between the 2 slots (--kv-unified) -> one conversation
+  # can grow to ~250k. No MTP (doesn't fit in 10 GB at 262k).
+  # Prompt processing 2440 / 2178 / 1879 tok/s at 32k / 64k / 128k, generation 40 / 36 / 32 tok/s.
+  cybertiel-262k:
+    name: "Cyber-Tiel Coder 35B-A3B (code, 262k context)"
+    cmd: >-
+      ${llama}
+      -m {{MODELS_DIR}}/Cyber-Tiel-Coder-35B-A3B-MTP-UD-Q4_K_S.gguf
+      -ncmoe 38 -c 262144 -np 2 --kv-unified
+      --checkpoint-min-step 2048
+      --temp 0.6 --top-p 0.95 --top-k 20 --min-p 0
+      --reasoning-budget 4000
+      --reasoning-budget-message "Stop thinking now and act."
+    env: ["CUDA_MODULE_LOADING=EAGER"]
+    ttl: 0
+
+  # General use / chat.
+  heretic:
+    name: "Qwen3.6 35B-A3B heretic (general)"
+    cmd: >-
+      ${llama}
+      -m {{MODELS_DIR}}/Qwen3.6-35B-A3B-uncensored-heretic-Native-MTP-Preserved-Q4_K_S.gguf
+      -ncmoe 34 -c 65536 -np 1
+      --spec-type draft-mtp
+      --temp 0.6 --top-p 0.95 --top-k 20 --min-p 0
+    env: ["CUDA_MODULE_LOADING=EAGER"]
+    ttl: 0

@@ -1,0 +1,18 @@
+{
+  "_comment": "Copy to config.json (not committed) and edit. Windows paths need doubled backslashes (C:\\llm\\...). Linux example in server/README.md.",
+
+  "llama_server": "C:\\llm\\llama.cpp\\llama-server.exe",
+  "llama_swap": "C:\\llm\\llama-swap\\llama-swap.exe",
+  "models_dir": "C:\\llm\\models",
+
+  "python": "pythonw.exe",
+  "opencode": "",
+  "extra_path": "",
+
+  "listen": "tailscale",
+  "llama_swap_port": 8080,
+  "agent_port": 8090,
+  "opencode_port": 4096,
+
+  "idle_sleep_minutes": 30
+}

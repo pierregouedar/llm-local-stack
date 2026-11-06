@@ -1,0 +1,28 @@
+# omp: the LLM server, over Tailscale. install.sh writes the server's Tailscale name or IP into baseUrl.
+# The key is not written here: "apiKey" is the NAME of an environment variable (LLAMA_PC_KEY),
+# exported by the shell commands (shell.sh) from ~/.config/opencode/llama-key.
+providers:
+  pc:
+    baseUrl: http://PC_HOST:8080/v1
+    api: openai-completions
+    apiKey: LLAMA_PC_KEY
+    authHeader: true
+    models:
+      # Context: 64k per conversation (the server has 2 slots of 64k), except cybertiel-262k.
+      # The ids must match the model names of server/llama-swap.template.yaml.
+      - id: cybertiel
+        name: Cyber-Tiel 35B-A3B (code, fast prompt processing)
+        contextWindow: 65536
+        maxTokens: 32768
+      - id: cybertiel-mtp
+        name: Cyber-Tiel 35B-A3B (code, fast generation MTP)
+        contextWindow: 65536
+        maxTokens: 32768
+      - id: cybertiel-262k
+        name: Cyber-Tiel 35B-A3B (code, 262k context)
+        contextWindow: 262144
+        maxTokens: 32768
+      - id: heretic
+        name: Qwen3.6 35B-A3B heretic (general)
+        contextWindow: 65536
+        maxTokens: 32768

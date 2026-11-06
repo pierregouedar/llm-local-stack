@@ -1,23 +1,23 @@
 ﻿<#
-Banc de mesure reproductible pour llama.cpp (Windows).
+Reproducible benchmark for llama.cpp (Windows, PowerShell 5.1+).
 
-Deux mesures, chacune ajoutee a bench\results.csv :
-  1. llama-bench : prefill (pp, 2048 tokens) et generation (tg, 128 tokens) a plusieurs
-     profondeurs de contexte (-d). -r 3 repetitions, on garde la MEDIANE des echantillons.
-  2. llama-server en conditions reelles : vrai code (dossier -CodeDir) de ~8k puis ~32k tokens
-     envoye sur /completion, a froid (prefill complet), puis une 2e requete qui reprend le
-     meme debut + une question : verifie que le cache evite de tout relire.
-     Chaque scenario est joue 2 fois (serveur relance), on garde la mediane.
+Two measurements, each appended to bench\results.csv:
+  1. llama-bench: prompt processing (pp, 2048 tokens) and generation (tg, 128 tokens) at several
+     context depths (-d). -r 3 repetitions, the MEDIAN of the samples is kept.
+  2. llama-server under real conditions: real code (folder -CodeDir) of ~8k then ~32k tokens
+     sent to /completion, cold (full prompt processing), then a 2nd request reusing the same
+     beginning + a question: checks that the cache avoids re-reading everything.
+     Each scenario runs 2 times (server restarted), the median is kept.
 
-Exemple :
+Example:
   .\bench.ps1 -Label "reference-bat" `
     -ServerArgs "-ngl 99 --n-cpu-moe 28 --jinja -c 262144 -fa on -ctk q8_0 -ctv q8_0 -t 8 -b 2048 -ub 2048 -np 1 --cache-reuse 256" `
     -BenchArgs  "-ngl 99 -ncmoe 28 -fa on -ctk q8_0 -ctv q8_0 -t 8 -b 2048 -ub 2048"
 #>
 param(
   [Parameter(Mandatory)][string]$Label,
-  [string]$Model     = '',   # defaut : <models_dir>\Cyber-Tiel-Coder-35B-A3B-MTP-UD-Q4_K_S.gguf (pc\stack.json)
-  [string]$BinDir    = '',   # defaut : dossier de llama_server (pc\stack.json)
+  [string]$Model     = '',   # default: <models_dir>\Cyber-Tiel-Coder-35B-A3B-MTP-UD-Q4_K_S.gguf (server\config.json)
+  [string]$BinDir    = '',   # default: folder of llama_server (server\config.json)
   [string]$ServerArgs = '',
   [string]$BenchArgs  = '',
   [int[]]$Depths     = @(0, 16384, 32768, 65536),
@@ -25,21 +25,24 @@ param(
   [int]$Runs         = 2,
   [switch]$SkipBench,
   [switch]$SkipServer,
-  [Parameter(Mandatory)][string]$CodeDir   # un depot de code reel : ses fichiers servent de prompts (8k, 32k, 64k...)
+  [Parameter(Mandatory)][string]$CodeDir   # a real code repository: its files are used as prompts (8k, 32k, 64k...)
 )
 
-# 'Continue' : sous PowerShell 5.1, 'Stop' transforme en erreur fatale le simple texte que
-# llama.cpp ecrit sur stderr. Les vraies erreurs sont levees explicitement (throw).
+# 'Continue': under PowerShell 5.1, 'Stop' turns the plain text llama.cpp writes to stderr
+# into a fatal error. Real errors are raised explicitly (throw).
 $ErrorActionPreference = 'Continue'
 
-# Valeurs par defaut lues dans pc\stack.json si non fournies
-$cfgFile = Join-Path (Split-Path $PSScriptRoot -Parent) 'pc\stack.json'
+# Numbers in results.csv always use a dot as decimal separator, whatever the Windows locale.
+[Threading.Thread]::CurrentThread.CurrentCulture = [Globalization.CultureInfo]::InvariantCulture
+
+# Defaults read from server\config.json when not given
+$cfgFile = Join-Path (Split-Path $PSScriptRoot -Parent) 'server\config.json'
 if ((-not $Model -or -not $BinDir) -and (Test-Path $cfgFile)) {
   $cfg = Get-Content $cfgFile -Raw | ConvertFrom-Json
   if (-not $BinDir) { $BinDir = Split-Path $cfg.llama_server }
   if (-not $Model)  { $Model  = Join-Path $cfg.models_dir 'Cyber-Tiel-Coder-35B-A3B-MTP-UD-Q4_K_S.gguf' }
 }
-if (-not $Model -or -not $BinDir) { throw 'Indique -Model et -BinDir (ou cree pc\stack.json).' }
+if (-not $Model -or -not $BinDir) { throw 'Pass -Model and -BinDir (or create server\config.json).' }
 $out     = $PSScriptRoot
 $csv     = Join-Path $out 'results.csv'
 $logDir  = Join-Path $out 'logs'
@@ -58,9 +61,9 @@ function Median([double[]]$v) {
 
 # --- commit llama.cpp ---------------------------------------------------------------
 $ver = (& "$BinDir\llama-server.exe" --version 2>&1 | Out-String)
-$commit = if ($ver -match 'build (\d+), commit ([0-9a-f]+)') { "b$($Matches[1])-$($Matches[2])" } else { 'inconnu' }
+$commit = if ($ver -match 'build (\d+), commit ([0-9a-f]+)') { "b$($Matches[1])-$($Matches[2])" } else { 'unknown' }
 
-# --- suivi du pic de VRAM pendant un test -------------------------------------------
+# --- peak VRAM tracking during a test -----------------------------------------------
 function Start-VramWatch {
   $file = Join-Path $env:TEMP "vram-$PID.txt"
   Set-Content $file 0
@@ -112,12 +115,12 @@ if (-not $SkipBench) {
     $med = Median ([double[]]$r.samples_ts)
     if ($r.n_gen -gt 0) { Add-Result 'llama-bench tg128' $r.n_depth $null $med $vram '' '' $BenchArgs }
     else               { Add-Result 'llama-bench pp2048' $r.n_depth $med $null $vram '' '' $BenchArgs }
-    Write-Host ("  depth {0,6} | {1} | mediane {2:N1} t/s" -f $r.n_depth, $(if ($r.n_gen -gt 0) { 'tg' } else { 'pp' }), $med)
+    Write-Host ("  depth {0,6} | {1} | median {2:N1} tok/s" -f $r.n_depth, $(if ($r.n_gen -gt 0) { 'tg' } else { 'pp' }), $med)
   }
 }
 
 # =====================================================================================
-# 2. llama-server en conditions reelles
+# 2. llama-server under real conditions
 # =====================================================================================
 if (-not $SkipServer) {
   $files = Get-ChildItem $CodeDir -Recurse -Include *.rs, *.py, *.ts, *.js, *.go, *.toml, *.slint -File |
@@ -127,12 +130,12 @@ if (-not $SkipServer) {
   $base = "http://127.0.0.1:$port"
 
   function Start-Server {
-    # jusqu'a 3 tentatives : juste apres l'arret du serveur precedent, le GPU n'est parfois pas
-    # encore libere ("CUDA error: shared object initialization failed")
+    # up to 3 attempts: right after the previous server stops, the GPU is sometimes not
+    # released yet ("CUDA error: shared object initialization failed")
     for ($try = 1; $try -le 3; $try++) {
       try { return (Start-ServerOnce) } catch {
         if ($try -eq 3) { throw }
-        Write-Host "  demarrage rate ($($_.Exception.Message)), nouvel essai dans 15 s"
+        Write-Host "  start failed ($($_.Exception.Message)), retrying in 15 s"
         Start-Sleep -Seconds 15
       }
     }
@@ -147,14 +150,14 @@ if (-not $SkipServer) {
     $sw = [Diagnostics.Stopwatch]::StartNew()
     for ($i = 0; $i -lt 300; $i++) {
       Start-Sleep -Seconds 1
-      if ($p.HasExited) { throw "llama-server s'est arrete au demarrage (voir $log)" }
+      if ($p.HasExited) { throw "llama-server exited during startup (see $log)" }
       try { if ((Invoke-RestMethod "$base/health" -TimeoutSec 2).status -eq 'ok') { $script:loadSec += @($sw.Elapsed.TotalSeconds); return $p } } catch {}
     }
-    throw "llama-server ne repond pas apres 300 s"
+    throw "llama-server not answering after 300 s"
   }
 
   function Get-Prompt([int]$target, [string]$nonce) {
-    # un en-tete unique par prompt : deux prompts differents ne partagent pas de debut commun
+    # a unique header per prompt: two different prompts share no common beginning
     $head = "// session $nonce : code review request`n"
     $len = [math]::Min($corpus.Length, $target * 4)
     for ($k = 0; $k -lt 8; $k++) {
@@ -168,8 +171,8 @@ if (-not $SkipServer) {
   }
 
   function Invoke-Completion([string]$prompt) {
-    # ignore_eos : force 256 tokens generes, sinon un prompt brut peut s'arreter tout de suite
-    # et la vitesse de generation n'est pas mesurable.
+    # ignore_eos: forces 256 generated tokens, otherwise a raw prompt may stop right away
+    # and generation speed can't be measured.
     $body = @{ prompt = $prompt; n_predict = 256; cache_prompt = $true; ignore_eos = $true } | ConvertTo-Json
     $r = Invoke-RestMethod "$base/completion" -Method Post -Headers $headers -ContentType 'application/json; charset=utf-8' `
          -Body ([Text.Encoding]::UTF8.GetBytes($body)) -TimeoutSec 1800
@@ -182,8 +185,8 @@ if (-not $SkipServer) {
     $w = Start-VramWatch
     $srv = Start-Server
     try {
-      # chauffe : la 1re requete apres chargement paie l'initialisation du GPU (graphes CUDA,
-      # allocations) ; sans elle, la 1re mesure (8k) serait faussee
+      # warm-up: the 1st request after loading pays for GPU initialization (CUDA graphs,
+      # allocations); without it the 1st measurement (8k) would be skewed
       $null = Invoke-RestMethod "$base/completion" -Method Post -Headers $headers -ContentType 'application/json' `
               -Body (@{ prompt = "fn main() { println!(`"warmup`"); }"; n_predict = 16; cache_prompt = $false } | ConvertTo-Json) -TimeoutSec 300
       foreach ($size in $PromptSizes) {
@@ -198,7 +201,7 @@ if (-not $SkipServer) {
           tokens = $p.Tokens; pp = $cold.prompt_per_second; tg = $cold.predicted_per_second; mtp = $mtp
           warm_prompt_n = $warm.prompt_n; warm_pp_ms = $warm.prompt_ms
         }
-        Write-Host ("[serveur run {0}] {1} tokens : prefill {2:N0} t/s | gen {3:N1} t/s | MTP {4} | 2e requete : {5} tokens relus en {6:N1} s" -f `
+        Write-Host ("[server run {0}] {1} tokens: prompt {2:N0} tok/s | gen {3:N1} tok/s | MTP {4} | 2nd request: {5} tokens re-read in {6:N1} s" -f `
           $run, $p.Tokens, $cold.prompt_per_second, $cold.predicted_per_second, $mtp, $warm.prompt_n, ($warm.prompt_ms / 1000))
       }
     } finally {
@@ -212,10 +215,10 @@ if (-not $SkipServer) {
   foreach ($k in $results.Keys) {
     $r = $results[$k]
     $mtpMed = Median ([double[]]($r | Where-Object { $_.mtp -ne $null } | ForEach-Object mtp))
-    $notes = "2e requete (meme debut): {0} tokens relus en {1:N1} s (mediane) | chargement {2:N0} s" -f `
+    $notes = "2nd request (same beginning): {0} tokens re-read in {1:N1} s (median) | load {2:N0} s" -f `
       (Median ([double[]]($r.warm_prompt_n))), ((Median ([double[]]($r.warm_pp_ms))) / 1000), (Median ([double[]]$script:loadSec))
     Add-Result 'llama-server /completion' ([int](Median ([double[]]($r.tokens)))) (Median ([double[]]($r.pp))) `
       (Median ([double[]]($r.tg))) (($r | Measure-Object vram -Maximum).Maximum) $mtpMed $notes $ServerArgs
   }
 }
-Write-Host "Resultats ajoutes a $csv"
+Write-Host "Results appended to $csv"

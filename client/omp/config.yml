@@ -1,0 +1,34 @@
+# omp: global settings. File: ~/.omp/agent/config.yml
+
+# Every role on the server's model (only one model fits in VRAM:
+# switching models = 20 s to 2 min of reload on the server).
+modelRoles:
+  default: pc/cybertiel
+  smol: pc/cybertiel
+  slow: pc/cybertiel
+  plan: pc/cybertiel
+  task: pc/cybertiel
+  commit: pc/cybertiel
+  # Optional cloud advisor: after "/login" in omp, uncomment and set the model you want.
+  # Code reviewed by the advisor is sent to the cloud provider.
+  # advisor: <provider>/<model>
+
+# advisor:
+#   enabled: true
+
+# Approvals: file reads and writes are automatic, shell commands are asked.
+tools:
+  # write = file writes without confirmation; always-ask-cached = asks once per kind of action
+  approvalMode: write
+
+bash:
+  patterns:
+    # always ask before pushing or rewriting git history
+    - match: "git push*"
+      approval: prompt
+    - match: "git reset --hard*"
+      approval: prompt
+    - match: "git clean*"
+      approval: prompt
+    - match: "rm -rf*"
+      approval: prompt

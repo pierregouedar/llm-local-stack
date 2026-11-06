@@ -1,13 +1,13 @@
-# Config locale et secrets : jamais dans le dépôt
-pc/stack.json
-pc/secrets/
-pc/llama-swap/llama-swap.yaml
-nas/pc-wake/.env
-*.key
+# Local config and secrets: never committed
+server/config.json
+server/secrets/
+server/llama-swap.yaml
+waker/.env
 .env
+*.key
 
-# Journaux, sauvegardes, temporaires
-pc/logs/
+# Logs, backups, temp files
+server/logs/
 bench/logs/
 *.log
 *.bak

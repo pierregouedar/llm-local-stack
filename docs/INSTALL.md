@@ -1,71 +1,71 @@
 # Installation
 
-Trois machines reliées par **Tailscale** : le **PC** (GPU, fait tourner le modèle), le **NAS** (toujours allumé, réveille le PC) et le **poste client** (Mac ou Linux, avec omp / OpenCode). Le NAS est optionnel : sans lui, tout marche tant que le PC est allumé.
+Three roles, usually three machines on the same [Tailscale](https://tailscale.com) network:
 
-## 1. PC (Windows)
+| Role | What runs there | Folder |
+|---|---|---|
+| **Server** | the GPU machine (Windows or Linux): llama-swap + llama.cpp, the agent, idle sleep | [`server/`](../server/) |
+| **Waker** (optional) | an always-on Linux box with Docker (NAS, Raspberry Pi...): Wake-on-LAN + remote start | [`waker/`](../waker/) |
+| **Client** | the machine you code from (macOS or Linux): omp / OpenCode / any OpenAI client | [`client/`](../client/) |
 
-### Logiciels
-| Élément | Où le trouver |
-|---|---|
-| llama.cpp (release Windows CUDA, ex. `llama-bXXXXX-bin-win-cuda-12.4-x64.zip` + `cudart-llama-bin-win-cuda-12.4-x64.zip`, extraits dans le même dossier) | https://github.com/ggml-org/llama.cpp/releases |
-| llama-swap (`llama-swap_<version>_windows_amd64.zip`) | https://github.com/mostlygeek/llama-swap/releases |
-| Modèle(s) GGUF, sur un NVMe de préférence | ex. https://huggingface.co/peculiar-ragdoll/Cyber-Tiel-Coder-35B-A3B-GGUF-MTP (`UD-Q4_K_S`) |
-| Python 3 (pour l'agent) | https://www.python.org |
-| Tailscale | https://tailscale.com |
-| OpenCode (optionnel : projets sur le PC pilotés à distance) | https://opencode.ai |
+Without a waker, everything works as long as the server is awake. Without Tailscale, use LAN IPs (`"listen"` in `server/config.json`) and keep the ports off the internet.
 
-### Configuration
-1. Cloner ce dépôt sur le PC.
-2. Copier `pc\stack.example.json` en **`pc\stack.json`** et renseigner les chemins (`llama_server`, `llama_swap`, `models_dir`, `pythonw`, éventuellement `opencode`).
-3. Si tes fichiers de modèle ont d'autres noms, adapter `pc\llama-swap\llama-swap.template.yaml` (et `--n-cpu-moe` selon ta VRAM : [PARAMETRES.md](PARAMETRES.md)).
-4. Double-cliquer **`pc\Demarrer IA.bat`**. Au premier lancement, les secrets sont créés dans `pc\secrets\` :
-   - `llama-api-key.txt` : clé d'API de llama-swap (à copier sur le poste client) ;
-   - `agent-token.txt` : jeton de l'agent (à mettre dans le `.env` du NAS) ;
-   - `opencode-password.txt` : seulement si `opencode` est configuré.
-5. Vérifier : `curl http://<ip-tailscale-du-pc>:8080/v1/models -H "Authorization: Bearer <clé>"`.
+## 1. Server
 
-`pc\Arreter IA.bat` arrête la pile (l'agent reste prêt). Après un **redémarrage** du PC, relancer `Demarrer IA.bat` (pas de démarrage automatique, par choix).
+1. Install llama.cpp, llama-swap, Python 3 and Tailscale, and download your GGUF model(s) (details: [server/README.md](../server/README.md#requirements)).
+2. Clone this repository on the server.
+3. Copy `server/config.example.json` to `server/config.json` and fill in the paths.
+4. Adapt `server/llama-swap.template.yaml` to your models and VRAM ([TUNING.md](TUNING.md)).
+5. Start it:
+   - Windows: double-click `server\windows\start.bat`
+   - Linux: `server/linux/start-agent.sh && server/linux/start.sh`
+6. Check: `curl http://<server-ip>:8080/v1/models -H "Authorization: Bearer <key>"` (key in `server/secrets/llama-api-key.txt`).
+7. For remote wake-up, enable Wake-on-LAN on the server ([server/README.md](../server/README.md#sleep-and-wake-on-lan)).
 
-### Wake-on-LAN (pour le réveil par le NAS)
-- Gestionnaire de périphériques → carte réseau → **Gestion de l'alimentation** : « Autoriser ce périphérique à sortir l'ordinateur du mode veille » + « Paquet magique uniquement » ; onglet **Avancé** : « Wake on Magic Packet » activé.
-- Le réveil marche depuis la **veille**. Depuis un PC éteint : BIOS (ErP désactivé, réveil PCI-E) et démarrage rapide de Windows désactivé.
+After a **reboot**, start it again (no service or scheduled task, by design).
 
-## 2. NAS (Docker, optionnel)
+## 2. Waker (optional)
+
+On the always-on box, in a folder holding `waker/docker-compose.yml` and `waker/.env.example`:
+
 ```bash
-mkdir -p /opt/pc-wake && cd /opt/pc-wake
-# copier nas/pc-wake/docker-compose.yml et nas/pc-wake/.env.example ici
-cp .env.example .env && nano .env      # PC_MAC, BROADCAST, PC_IP, AGENT_TOKEN
-chmod 600 .env
+cp .env.example .env && chmod 600 .env    # PC_MAC, BROADCAST, PC_IP, AGENT_TOKEN
 docker compose up -d
-curl http://localhost:8199/status       # {"pc_up": true, "stack_up": true}
+curl http://localhost:8199/status          # {"pc_up": true, "stack_up": true}
 ```
-`network_mode: host` est indispensable (le paquet de réveil doit sortir sur le réseau local). Le NAS doit être dans le même tailnet que le PC.
 
-## 3. Poste client (Mac / Linux)
-Copier `pc\secrets\llama-api-key.txt` du PC sur le Mac (ex. `~/llama-key.txt`), puis :
+`AGENT_TOKEN` is the content of `server/secrets/agent-token.txt`. Details: [waker/README.md](../waker/README.md).
+
+## 3. Client
+
+Copy `server/secrets/llama-api-key.txt` to the client (e.g. `~/llama-key.txt`), then:
+
 ```bash
-cd mac && ./install.sh <nom-tailscale-du-pc> <nom-tailscale-du-nas> ~/llama-key.txt
+cd client && ./install.sh <server-tailscale-name> <waker-tailscale-name> ~/llama-key.txt
 ```
-Le script **n'écrase rien** : s'il trouve une config existante (`~/.omp/agent/models.yml`, `~/.config/opencode/opencode.json`, `~/.zshrc`…), il la laisse et t'indique quoi fusionner.
 
-Vérifier dans un nouveau terminal :
+The script **never overwrites** an existing config; it tells you what to merge. Then, in a new terminal:
+
 ```bash
 pcstatus
-omp -p --no-session "Reply with exactly: OK"
-opencode models pc
+pcwake && omp --model pc/cybertiel-mtp
 ```
 
-## Utilisation
-| Commande (client) | Effet |
-|---|---|
-| `pcstatus` | PC joignable ? pile IA lancée ? |
-| `pcwake` | réveille le PC et démarre la pile si besoin |
-| `pcstop` | arrête la pile (libère la VRAM) |
-| `ompw …` / `ocw …` | `pcwake` puis omp / OpenCode |
-| `omp --model pc/cybertiel-mtp` | dev courant (génération la plus rapide) |
-| `omp --model pc/cybertiel-262k` | longues sessions |
+Details and other clients: [client/README.md](../client/README.md).
 
-## Désinstaller
-- PC : `Arreter IA.bat`, arrêter le processus `pythonw … ia-agent.py`, supprimer le dossier du dépôt.
-- NAS : `docker compose down` dans son dossier.
-- Client : retirer `~/.omp/agent/{models,config}.yml`, l'entrée `pc` d'OpenCode et le bloc ajouté à `~/.zshrc` (une sauvegarde `.zshrc.bak-<date>` a été faite).
+## Daily use
+
+| Where | Command | Effect |
+|---|---|---|
+| client | `pcwake` | wake the server and start the stack if needed |
+| client | `pcstop` | stop the stack (frees the VRAM) |
+| client | `pcstatus` | server awake? stack running? |
+| server | `start` / `stop` script | same, locally |
+
+The server goes back to sleep after `idle_sleep_minutes` without model activity or user input.
+
+## Uninstall
+
+- Server: run the stop script, stop the `agent.py` process, delete the repository folder.
+- Waker: `docker compose down` in its folder.
+- Client: remove `~/.omp/agent/{models,config}.yml`, the `pc` provider in OpenCode and the block appended to your shell rc file (a dated `.bak` copy was made before it was added).
