@@ -23,6 +23,7 @@
   <img src="https://img.shields.io/badge/prompt%20processing%20%4032k-2%2C949%20tok%2Fs%20(16%C3%97)-brightgreen" alt="prefill">
   <img src="https://img.shields.io/badge/generation-~50%20tok%2Fs-brightgreen" alt="generation">
   <img src="https://img.shields.io/badge/context-up%20to%20262k-blue" alt="context">
+  <img src="https://img.shields.io/badge/tested%20on-RTX%203080%2010%20GB-76B900?logo=nvidia&logoColor=white" alt="tested on RTX 3080 10 GB">
 </p>
 
 ---
@@ -36,7 +37,23 @@ A small, opinionated toolkit that turns a gaming PC into a **private, OpenAI-com
 - **Wake it on demand**: a tiny Docker service on an always-on box (NAS, Raspberry Pi, home server) sends Wake-on-LAN, then asks the server to start the model if it isn't running. The server goes back to sleep after 30 idle minutes.
 - **No service, no scheduled task**: you start the stack yourself (one double-click on Windows, one command on Linux), and it survives sleep.
 
-It ships with a **reference configuration measured on real hardware** (Windows, RTX 3080 10 GB, Ryzen 7 3800X, 32 GB DDR4) and the full benchmark log behind every parameter, so you can see *why* each flag is there and re-tune it for your machine.
+It ships with a **reference configuration measured on real hardware** and the full benchmark log behind every parameter, so you can see *why* each flag is there and re-tune it for your machine.
+
+## Tested on
+
+All numbers, flags and `--n-cpu-moe` values in this repository come from **one machine**:
+
+| | |
+|---|---|
+| GPU | **NVIDIA GeForce RTX 3080, 10 GB** |
+| CPU | AMD Ryzen 7 3800X (Zen 2, 8 cores / 16 threads) |
+| RAM | 32 GB DDR4-3600, dual channel |
+| Storage | NVMe Gen3 (models), SATA SSD |
+| OS | Windows 11, desktop on 2 monitors (~1.2 GB of VRAM used by the desktop) |
+| Software | llama.cpp b12128, CUDA 12.4 build (the CUDA 13 build was measured too, no difference), llama-swap v270 |
+| Clients | macOS with omp and OpenCode, over Tailscale; waker on a Linux NAS with Docker |
+
+Other GPUs, VRAM sizes and the Linux server scripts have **not** been tested: expect to re-tune `--n-cpu-moe` ([docs/TUNING.md](docs/TUNING.md)), and please open an issue with your numbers if you run it elsewhere.
 
 ## Results on the reference machine
 
