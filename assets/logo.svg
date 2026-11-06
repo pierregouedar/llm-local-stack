@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="local-llm-stack logo">
+  <defs>
+    <linearGradient id="top" x1="40" y1="37" x2="216" y2="125" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A78BFA"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+    <linearGradient id="spark" x1="190" y1="24" x2="222" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#C4B5FD"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+  </defs>
+
+  <!-- bottom layer: client -->
+  <polygon points="40,161 128,205 128,219 40,175" fill="#475569"/>
+  <polygon points="128,205 216,161 216,175 128,219" fill="#334155"/>
+  <polygon points="128,117 216,161 128,205 40,161" fill="#64748B"/>
+
+  <!-- middle layer: network / wake -->
+  <polygon points="40,121 128,165 128,179 40,135" fill="#4338CA"/>
+  <polygon points="128,165 216,121 216,135 128,179" fill="#3730A3"/>
+  <polygon points="128,77 216,121 128,165 40,121" fill="#6366F1"/>
+
+  <!-- top layer: GPU / model -->
+  <polygon points="40,81 128,125 128,139 40,95" fill="#6D28D9"/>
+  <polygon points="128,125 216,81 216,95 128,139" fill="#0E7490"/>
+  <polygon points="128,37 216,81 128,125 40,81" fill="url(#top)"/>
+
+  <!-- chip on the top face -->
+  <g stroke="#F0F9FF" stroke-width="3" stroke-linecap="round" fill="#F0F9FF">
+    <line x1="109.5" y1="71.75" x2="93.5" y2="63.75"/>
+    <line x1="146.5" y1="71.75" x2="162.5" y2="63.75"/>
+    <line x1="146.5" y1="90.25" x2="162.5" y2="98.25"/>
+    <line x1="109.5" y1="90.25" x2="93.5" y2="98.25"/>
+    <circle cx="93.5" cy="63.75" r="3.5" stroke="none"/>
+    <circle cx="162.5" cy="63.75" r="3.5" stroke="none"/>
+    <circle cx="162.5" cy="98.25" r="3.5" stroke="none"/>
+    <circle cx="93.5" cy="98.25" r="3.5" stroke="none"/>
+  </g>
+  <polygon points="128,62.5 165,81 128,99.5 91,81" fill="#F0F9FF"/>
+  <polygon points="128,72 146,81 128,90 110,81" fill="#7C3AED"/>
+
+  <!-- spark -->
+  <path d="M206 22 Q208.5 37.5 224 40 Q208.5 42.5 206 58 Q203.5 42.5 188 40 Q203.5 37.5 206 22 Z" fill="url(#spark)"/>
+</svg>

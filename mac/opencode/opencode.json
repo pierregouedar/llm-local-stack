@@ -1,0 +1,52 @@
+{
+    "$schema":  "https://opencode.ai/config.json",
+    "model":  "pc/cybertiel",
+    "small_model":  "pc/cybertiel",
+    "provider":  {
+                     "pc":  {
+                                "npm":  "@ai-sdk/openai-compatible",
+                                "name":  "PC (llama-swap via Tailscale)",
+                                "options":  {
+                                                "baseURL":  "http://PC_HOST:8080/v1",
+                                                "apiKey":  "{file:./llama-key}",
+                                                "timeout":  1800000
+                                            },
+                                "models":  {
+                                               "cybertiel":  {
+                                                                 "name":  "Cyber-Tiel Coder 35B-A3B (code, prefill rapide)",
+                                                                 "limit":  {
+                                                                               "context":  65536,
+                                                                               "output":  32768
+                                                                           }
+                                                             },
+                                               "heretic":  {
+                                                               "name":  "Qwen3.6 35B-A3B heretic (general)",
+                                                               "limit":  {
+                                                                             "context":  65536,
+                                                                             "output":  32768
+                                                                         }
+                                                           },
+                                               "cybertiel-mtp":  {
+                                                                     "name":  "Cyber-Tiel Coder 35B-A3B (code, generation rapide MTP)",
+                                                                     "limit":  {
+                                                                                   "context":  65536,
+                                                                                   "output":  32768
+                                                                               }
+                                                                 },
+                                               "cybertiel-262k":  {
+                                                                      "name":  "Cyber-Tiel 35B-A3B (code, contexte 262k)",
+                                                                      "limit":  {
+                                                                                    "context":  262144,
+                                                                                    "output":  32768
+                                                                                }
+                                                                  }
+                                           }
+                            }
+                 },
+    "command":  {
+                    "goal":  {
+                                 "description":  "Travaille en autonomie, verifie sur de vraies donnees, s\u0027arrete si une info manque",
+                                 "template":  "Objective: $ARGUMENTS\n\nWork autonomously until this objective is done AND verified on real data. Follow the global rules strictly.\n\n1. Discover first: read the relevant files and run the relevant commands to see the REAL inputs, formats and current state. If anything the objective depends on is missing (file, path, credential, tool, spec detail), STOP immediately and report exactly what is missing. Do not invent a substitute.\n2. Write a short numbered plan of small steps, each with how you will verify it.\n3. For each step: implement, build, run the tests, then run the program on REAL input and check the output. If something fails, read the error, fix the cause, and retry. Do not move on while a step is red.\n4. Tests must include at least one real example (secrets replaced by REDACTED). Never weaken a test just to make it pass.\n5. Commit after each verified step if the project uses git. Never push, never delete outside the project.\n\nFinish with a short report: steps done, exact verification commands and their results, what is NOT verified or not done, and any assumption you had to make."
+                             }
+                }
+}

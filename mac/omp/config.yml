@@ -1,0 +1,34 @@
+# omp : reglages globaux. Fichier : ~/.omp/agent/config.yml
+
+# Tous les roles sur le modele local du PC (un seul modele tient en VRAM :
+# changer de modele = 20 s a 2 min de rechargement cote PC).
+modelRoles:
+  default: pc/cybertiel
+  smol: pc/cybertiel
+  slow: pc/cybertiel
+  plan: pc/cybertiel
+  task: pc/cybertiel
+  commit: pc/cybertiel
+  # Advisor cloud (optionnel) : apres "/login" dans omp, decommente et mets le modele voulu.
+  # Le code relu par l'advisor part chez le fournisseur cloud.
+  # advisor: <fournisseur>/<modele>
+
+# advisor:
+#   enabled: true
+
+# Approbations : lecture et ecriture de fichiers auto, commandes shell demandees.
+tools:
+  # write = ecritures de fichiers sans confirmation ; always-ask-cached = demande une fois par type d'action
+  approvalMode: write
+
+bash:
+  patterns:
+    # toujours demander avant de pousser ou de reecrire l'historique git
+    - match: "git push*"
+      approval: prompt
+    - match: "git reset --hard*"
+      approval: prompt
+    - match: "git clean*"
+      approval: prompt
+    - match: "rm -rf*"
+      approval: prompt

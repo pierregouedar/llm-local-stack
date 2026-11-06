@@ -1,0 +1,18 @@
+# Config locale et secrets : jamais dans le dépôt
+pc/stack.json
+pc/secrets/
+pc/llama-swap/llama-swap.yaml
+nas/pc-wake/.env
+*.key
+.env
+
+# Journaux, sauvegardes, temporaires
+pc/logs/
+bench/logs/
+*.log
+*.bak
+*.bak-*
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
